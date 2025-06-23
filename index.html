@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fast Speech to Text Notes</title>
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#2c3e50" />
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+        background: white;
+        padding: 25px;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #2c3e50;
+        margin-bottom: 30px;
+      }
+
+      .control-panel {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s;
+      }
+
+      #toggleBtn {
+        background-color: #9c27b0;
+        color: white;
+      }
+
+      #addNoteBtn {
+        background-color: #3498db;
+        color: white;
+      }
+
+      #clearBtn {
+        background-color: #f39c12;
+        color: white;
+      }
+
+      #translateBtn {
+        background-color: #4caf50;
+        color: white;
+      }
+
+      button:hover {
+        opacity: 0.9;
+        transform: translateY(-2px);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .status {
+        text-align: center;
+        margin: 15px 0;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #ecf0f1;
+      }
+
+      .transcript-container {
+        display: flex;
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .text-display,
+      .notes-display {
+        flex: 1;
+        min-height: 200px;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+      }
+
+      .text-display {
+        font-size: 16px;
+      }
+
+      .notes-display {
+        background-color: #fffde7;
+      }
+
+      .notes-list {
+        list-style-type: none;
+        padding: 0;
+      }
+
+      .note-item {
+        padding: 10px;
+        margin-bottom: 8px;
+        background-color: #fff9c4;
+        border-left: 4px solid #ffd600;
+        border-radius: 3px;
+        position: relative;
+      }
+
+      .note-item .delete-note {
+        position: absolute;
+        right: 8px;
+        top: 8px;
+        background: #ff7043;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        line-height: 20px;
+        text-align: center;
+        cursor: pointer;
+      }
+
+      .settings {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #ecf0f1;
+        border-radius: 5px;
+      }
+
+      .translation-panel {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #e3f2fd;
+        border-radius: 5px;
+      }
+
+      .translation-result {
+        margin-top: 10px;
+        padding: 10px;
+        background-color: #e8f5e9;
+        border-radius: 5px;
+        min-height: 50px;
+      }
+
+      select {
+        padding: 8px;
+        border-radius: 5px;
+        border: 1px solid #bdc3c7;
+      }
+
+      #targetLanguage {
+        margin-left: 10px;
+      }
+
+      footer {
+        text-align: center;
+        margin-top: 30px;
+        color: #7f8c8d;
+        font-size: 14px;
+      }
+
+      @media (max-width: 768px) {
+        .transcript-container {
+          flex-direction: column;
+        }
+      }
+
+      .listening-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background-color: #4caf50;
+        margin-right: 8px;
+        animation: pulse 1.5s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.2);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @media (max-width: 480px) {
+        .container {
+          padding: 15px;
+        }
+
+        button {
+          padding: 12px 15px;
+          font-size: 16px;
+          min-width: 120px;
+          margin-bottom: 8px;
+        }
+
+        .control-panel {
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .text-display,
+        .notes-display {
+          min-height: 150px;
+          font-size: 14px;
+        }
+
+        .note-item {
+          padding-right: 30px;
+        }
+      }
+
+      /* Offline indicator */
+      .offline-status {
+        position: fixed;
+        bottom: 10px;
+        left: 10px;
+        padding: 5px 10px;
+        background-color: #f39c12;
+        color: white;
+        border-radius: 3px;
+        font-size: 12px;
+        z-index: 1000;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Fast Speech to Text Notes</h1>
+
+      <div class="status" id="status">
+        <span class="listening-indicator"></span>Auto-listening activated...
+      </div>
+
+      <div class="control-panel">
+        <button id="toggleBtn">Pause Listening</button>
+        <button id="addNoteBtn">Add as Note</button>
+        <button id="clearBtn">Clear All</button>
+        <button id="exportBtn">Export Notes</button>
+        <button id="importBtn">Import Notes</button>
+      </div>
+
+      <div class="transcript-container">
+        <div class="text-display" id="textDisplay" contenteditable="true">
+          Your transcribed text will appear here...
+        </div>
+
+        <div class="notes-display">
+          <h3>Your Notes</h3>
+          <ul class="notes-list" id="notesList"></ul>
+        </div>
+      </div>
+
+      <div class="settings">
+        <label for="languageSelect">Speech Language: </label>
+        <select id="languageSelect">
+          <option value="am">Amharic (am)</option>
+          <option value="ti">Tigrinya - ትግርኛ</option>
+          <option value="om">Oromo - Oromoo</option>
+          <option value="so">Somali - Soomaali</option>
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="es-ES">Spanish</option>
+          <option value="fr-FR">French</option>
+          <option value="de-DE">German</option>
+          <option value="it-IT">Italian</option>
+          <option value="pt-BR">Portuguese</option>
+          <option value="hi-IN">Hindi</option>
+          <option value="ja-JP">Japanese</option>
+          <option value="zh-CN">Chinese</option>
+        </select>
+      </div>
+
+      <!-- Translation Panel -->
+      <div class="translation-panel">
+        <button id="translateBtn">Translate Text</button>
+        <select id="targetLanguage">
+          <option value="en">English</option>
+          <option value="es">Spanish</option>
+          <option value="fr">French</option>
+          <option value="de">German</option>
+          <option value="it">Italian</option>
+          <option value="pt">Portuguese</option>
+          <option value="ru">Russian</option>
+          <option value="ja">Japanese</option>
+          <option value="zh">Chinese</option>
+          <option value="ar">Arabic</option>
+          <option value="hi">Hindi</option>
+          <option value="am">Amharic</option>
+          <option value="ti">Tigrinya</option>
+          <option value="om">Oromo</option>
+          <option value="so">Somali</option>
+        </select>
+        <div class="translation-result" id="translationResult"></div>
+      </div>
+    </div>
+    <footer>
+      Note: Speech recognition and translation require internet, but notes work
+      offline.
+    </footer>
+
+    <div id="offlineIndicator" class="offline-status" style="display: none">
+      OFFLINE MODE
+    </div>
+
+    <script>
+      // Check online status and update UI
+      function updateOnlineStatus() {
+        const offlineIndicator = document.getElementById("offlineIndicator");
+        if (navigator.onLine) {
+          offlineIndicator.style.display = "none";
+        } else {
+          offlineIndicator.style.display = "block";
+        }
+      }
+
+      window.addEventListener("online", updateOnlineStatus);
+      window.addEventListener("offline", updateOnlineStatus);
+      updateOnlineStatus();
+
+      // Initialize IndexedDB for offline storage
+      let db;
+      const DB_NAME = "SpeechNotesDB";
+      const DB_VERSION = 1;
+      const STORE_NAME = "notes";
+
+      function initDB() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+          request.onerror = (event) => {
+            console.error("Database error:", event.target.error);
+            reject("Database error");
+          };
+
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+              db.createObjectStore(STORE_NAME, {
+                keyPath: "id",
+                autoIncrement: true,
+              });
+            }
+          };
+
+          request.onsuccess = (event) => {
+            db = event.target.result;
+            resolve(db);
+          };
+        });
+      }
+
+      // Save note to IndexedDB
+      async function saveNoteToDB(text) {
+        if (!db) await initDB();
+
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction([STORE_NAME], "readwrite");
+          const store = transaction.objectStore(STORE_NAME);
+
+          const request = store.add({
+            text: text,
+            timestamp: new Date().toISOString(),
+          });
+
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = (event) => reject(event.target.error);
+        });
+      }
+
+      // Get all notes from IndexedDB
+      async function getAllNotesFromDB() {
+        if (!db) await initDB();
+
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction([STORE_NAME], "readonly");
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.getAll();
+
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = (event) => reject(event.target.error);
+        });
+      }
+
+      // Delete note from IndexedDB
+      async function deleteNoteFromDB(id) {
+        if (!db) await initDB();
+
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction([STORE_NAME], "readwrite");
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.delete(id);
+
+          request.onsuccess = () => resolve(true);
+          request.onerror = (event) => reject(event.target.error);
+        });
+      }
+
+      // Clear all notes from IndexedDB
+      async function clearAllNotesFromDB() {
+        if (!db) await initDB();
+
+        return new Promise((resolve, reject) => {
+          const transaction = db.transaction([STORE_NAME], "readwrite");
+          const store = transaction.objectStore(STORE_NAME);
+          const request = store.clear();
+
+          request.onsuccess = () => resolve(true);
+          request.onerror = (event) => reject(event.target.error);
+        });
+      }
+
+      // Function to export notes as Word document
+      async function exportAsDocx(notes) {
+        try {
+          // Load the docx library dynamically
+          const { default: docx } = await import(
+            "https://cdn.jsdelivr.net/npm/docx@7.8.2/+esm"
+          );
+
+          // Create document structure
+          const { Document, Paragraph, TextRun, Packer } = docx;
+
+          const doc = new Document({
+            sections: [
+              {
+                properties: {},
+                children: [
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: "Speech to Text Notes Export",
+                        bold: true,
+                        size: 28,
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
+                    children: [
+                      new TextRun({
+                        text: `Exported on: ${new Date().toLocaleString()}`,
+                        size: 22,
+                        color: "666666",
+                      }),
+                    ],
+                  }),
+                  new Paragraph({ text: "" }), // Empty paragraph for spacing
+
+                  // Add all notes
+                  ...notes.flatMap((note) => [
+                    new Paragraph({
+                      children: [
+                        new TextRun({
+                          text: "• " + note.text,
+                          size: 24,
+                        }),
+                      ],
+                    }),
+                    new Paragraph({ text: "" }), // Spacing between notes
+                  ]),
+                ],
+              },
+            ],
+          });
+
+          // Generate the Word document
+          const blob = await Packer.toBlob(doc);
+
+          // Create download link
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "speech-notes-export.docx";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          console.error("Error generating Word document:", error);
+          alert(
+            "Failed to export as Word document. Please try the JSON format instead."
+          );
+        }
+      }
+
+      // Function to import Word documents
+      async function importDocxFile(file) {
+        try {
+          // Load the docx and mammoth libraries dynamically
+          const { default: mammoth } = await import(
+            "https://cdn.jsdelivr.net/npm/mammoth@1.4.0/+esm"
+          );
+
+          const arrayBuffer = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => resolve(event.target.result);
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(file);
+          });
+
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          const text = result.value;
+
+          // Split text into notes (assuming each paragraph is a note)
+          const notes = text
+            .split("\n")
+            .map((line) => line.trim())
+            .filter((line) => line.length > 0)
+            .map((line) => ({ text: line }));
+
+          return notes;
+        } catch (error) {
+          console.error("Error reading Word document:", error);
+          throw new Error("Could not read Word document");
+        }
+      }
+
+      // Translation function using Google Cloud Translation API
+      async function translateText(text, targetLang) {
+        // IMPORTANT: Replace with your own API key or translation service
+        // This is a placeholder implementation - you'll need to:
+        // 1. Sign up for Google Cloud Translation API or another service
+        // 2. Get an API key
+        // 3. Implement proper authentication
+
+        // For demo purposes, we'll use a simple fetch to a mock service
+        // In production, you should use proper authentication and error handling
+
+        try {
+          // This is a mock implementation - replace with real API call
+          const response = await fetch(
+            `https://translation-api.example.com/translate`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                // Include your API key here in production
+                // 'Authorization': 'Bearer YOUR_API_KEY'
+              },
+              body: JSON.stringify({
+                q: text,
+                target: targetLang,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Translation API error");
+          }
+
+          const data = await response.json();
+          return data.translatedText || "Translation not available";
+        } catch (error) {
+          console.error("Translation error:", error);
+
+          // Fallback: Return the original text if translation fails
+          return text;
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", async function () {
+        const textDisplay = document.getElementById("textDisplay");
+        const notesList = document.getElementById("notesList");
+        const toggleBtn = document.getElementById("toggleBtn");
+        const addNoteBtn = document.getElementById("addNoteBtn");
+        const clearBtn = document.getElementById("clearBtn");
+        const exportBtn = document.getElementById("exportBtn");
+        const importBtn = document.getElementById("importBtn");
+        const status = document.getElementById("status");
+        const languageSelect = document.getElementById("languageSelect");
+        const translateBtn = document.getElementById("translateBtn");
+        const targetLanguage = document.getElementById("targetLanguage");
+        const translationResult = document.getElementById("translationResult");
+
+        // Initialize database
+        try {
+          await initDB();
+          // Load existing notes
+          const notes = await getAllNotesFromDB();
+          notes.forEach((note) => {
+            addNoteToUI(note.text, note.id);
+          });
+        } catch (error) {
+          console.error("Failed to initialize database:", error);
+        }
+
+        let recognition;
+        let isListening = false;
+        let isAutoListening = true;
+        let finalTranscript = "";
+
+        // Check for browser support
+        if (
+          !("webkitSpeechRecognition" in window) &&
+          !("SpeechRecognition" in window)
+        ) {
+          status.innerHTML =
+            '<span style="color:red;">Speech recognition not supported in your browser. Try Chrome or Edge.</span>';
+          toggleBtn.disabled = true;
+          addNoteBtn.disabled = true;
+          return;
+        }
+
+        const SpeechRecognition =
+          window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+
+        // ====== PERFORMANCE OPTIMIZATIONS ======
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.maxAlternatives = 1;
+        recognition.lang = languageSelect.value;
+
+        // Chrome/Edge specific optimizations
+        if ("webkitSpeechRecognition" in window) {
+          try {
+            recognition.grammars = new SpeechGrammarList(); // Empty grammar list for faster processing
+            recognition.moz = false;
+            recognition.msGrammar = false;
+          } catch (e) {
+            console.log("Some performance features not supported");
+          }
+        }
+
+        // Debounce variables for efficient UI updates
+        let lastUpdateTime = 0;
+        const updateInterval = 300; // Update UI max every 300ms
+        let pendingTranscript = "";
+
+        // Optimized result handler
+        recognition.onresult = function (event) {
+          const currentTime = Date.now();
+          let interimTranscript = "";
+          let finalTranscriptPart = "";
+
+          // Process all new results since last result
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript + " ";
+              finalTranscriptPart += transcript + " ";
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          // Combine with any pending updates
+          pendingTranscript = finalTranscript + interimTranscript;
+
+          // Throttle UI updates to prevent jank
+          if (currentTime - lastUpdateTime > updateInterval) {
+            updateTextDisplay(finalTranscript, interimTranscript);
+            lastUpdateTime = currentTime;
+            pendingTranscript = "";
+          }
+        };
+
+        // Efficient UI update function
+        function updateTextDisplay(final, interim) {
+          // Use requestAnimationFrame for smoother UI updates
+          requestAnimationFrame(() => {
+            textDisplay.innerHTML =
+              final +
+              (interim
+                ? '<span style="color:#aaa;">' + interim + "</span>"
+                : "");
+          });
+        }
+
+        // Final update when recognition ends
+        recognition.onend = function () {
+          if (pendingTranscript) {
+            updateTextDisplay(finalTranscript, "");
+            pendingTranscript = "";
+          }
+
+          if (isAutoListening) {
+            setTimeout(() => {
+              try {
+                recognition.start();
+              } catch (e) {
+                console.log("Auto-restart failed, retrying...", e);
+                setTimeout(() => {
+                  if (isAutoListening) recognition.start();
+                }, 300); // Faster retry
+              }
+            }, 100); // Shorter delay before restart
+          }
+        };
+
+        recognition.onstart = function () {
+          isListening = true;
+          status.innerHTML =
+            '<span class="listening-indicator"></span>Listening... Speak now!';
+          status.style.backgroundColor = "#e8f5e9";
+          toggleBtn.textContent = "Pause Listening";
+        };
+
+        // Faster error recovery
+        recognition.onerror = function (event) {
+          console.error("Recognition error:", event.error);
+          isListening = false;
+
+          let errorMessage = "Error occurred";
+          switch (event.error) {
+            case "no-speech":
+              errorMessage = "No speech detected";
+              break;
+            case "audio-capture":
+              errorMessage = "Microphone not available";
+              break;
+            case "not-allowed":
+              errorMessage = "Microphone access denied";
+              break;
+            default:
+              errorMessage = `Error: ${event.error}`;
+          }
+
+          status.innerHTML = `<span style="color:red;">${errorMessage}</span>`;
+          status.style.backgroundColor = "#ffebee";
+          toggleBtn.textContent = "Start Listening";
+
+          // Faster auto-restart for recoverable errors
+          if (["no-speech", "aborted", "network"].includes(event.error)) {
+            setTimeout(() => {
+              if (isAutoListening) recognition.start();
+            }, 500); // Faster retry
+          }
+        };
+
+        // Start listening with faster initialization
+        if (navigator.onLine) {
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch (e) {
+              console.log("Initial start failed, retrying...", e);
+              setTimeout(() => {
+                try {
+                  recognition.start();
+                } catch (e2) {
+                  console.log("Second attempt failed:", e2);
+                  status.innerHTML =
+                    '<span style="color:red;">Microphone error. Refresh and allow access.</span>';
+                }
+              }, 300); // Faster retry
+            }
+          }, 100); // Shorter initial delay
+        }
+
+        // Button event listeners
+        toggleBtn.addEventListener("click", function () {
+          this.disabled = true;
+
+          if (isListening) {
+            // Pause listening
+            isAutoListening = false;
+            try {
+              recognition.stop();
+            } catch (e) {
+              console.log("Error stopping recognition:", e);
+            }
+            isListening = false;
+            toggleBtn.textContent = "Start Listening";
+            status.textContent = "Listening paused";
+            status.style.backgroundColor = "#fff3e0";
+          } else {
+            // Start listening
+            isAutoListening = true;
+            finalTranscript = "";
+            recognition.lang = languageSelect.value;
+            try {
+              recognition.start();
+            } catch (e) {
+              console.log("Error starting recognition:", e);
+              status.innerHTML =
+                '<span style="color:red;">Error starting microphone. Please refresh and allow permissions.</span>';
+              setTimeout(() => {
+                if (isAutoListening) recognition.start();
+              }, 300); // Faster retry
+            }
+          }
+
+          setTimeout(() => {
+            this.disabled = false;
+          }, 300); // Faster re-enable
+        });
+
+        addNoteBtn.addEventListener("click", async function () {
+          if (
+            textDisplay.textContent.trim() &&
+            textDisplay.textContent.trim() !==
+              "Your transcribed text will appear here..."
+          ) {
+            const noteText = textDisplay.textContent.trim();
+            try {
+              const noteId = await saveNoteToDB(noteText);
+              addNoteToUI(noteText, noteId);
+              textDisplay.textContent = "";
+              finalTranscript = "";
+            } catch (error) {
+              console.error("Failed to save note:", error);
+              // Fallback to localStorage if IndexedDB fails
+              addNoteToUI(noteText);
+              textDisplay.textContent = "";
+              finalTranscript = "";
+            }
+          }
+        });
+
+        clearBtn.addEventListener("click", async function () {
+          textDisplay.textContent = "";
+          notesList.innerHTML = "";
+          finalTranscript = "";
+          try {
+            await clearAllNotesFromDB();
+          } catch (error) {
+            console.error("Failed to clear notes:", error);
+          }
+        });
+
+        exportBtn.addEventListener("click", async function () {
+          try {
+            const notes = await getAllNotesFromDB();
+            if (notes.length === 0) {
+              alert("No notes to export");
+              return;
+            }
+
+            // Ask user which format they want
+            const format = prompt(
+              "Export format:\n1. JSON (default)\n2. Word (.docx)\n\nEnter 1 or 2",
+              "1"
+            );
+
+            if (format === null) return; // User cancelled
+
+            if (format === "2") {
+              // Export as Word document
+              exportAsDocx(notes);
+            } else {
+              // Default to JSON export
+              const dataStr = JSON.stringify(notes, null, 2);
+              const dataUri =
+                "data:application/json;charset=utf-8," +
+                encodeURIComponent(dataStr);
+
+              const exportFileDefaultName = "speech-notes-export.json";
+
+              const linkElement = document.createElement("a");
+              linkElement.setAttribute("href", dataUri);
+              linkElement.setAttribute("download", exportFileDefaultName);
+              linkElement.click();
+            }
+          } catch (error) {
+            console.error("Export failed:", error);
+            alert("Failed to export notes");
+          }
+        });
+
+        importBtn.addEventListener("click", function () {
+          const fileInput = document.createElement("input");
+          fileInput.type = "file";
+          fileInput.accept = ".json,.docx,.txt";
+
+          fileInput.addEventListener("change", async function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function (e) {
+              try {
+                let notes = [];
+
+                if (file.name.endsWith(".docx")) {
+                  // Handle Word document import
+                  notes = await importDocxFile(file);
+                } else {
+                  // Handle JSON import (original functionality)
+                  const parsed = JSON.parse(e.target.result);
+                  if (!Array.isArray(parsed)) {
+                    throw new Error("Invalid file format");
+                  }
+                  notes = parsed;
+                }
+
+                // Clear existing notes
+                notesList.innerHTML = "";
+                await clearAllNotesFromDB();
+
+                // Add new notes
+                for (const note of notes) {
+                  try {
+                    const text = typeof note === "string" ? note : note.text;
+                    const noteId = await saveNoteToDB(text);
+                    addNoteToUI(text, noteId);
+                  } catch (error) {
+                    console.error("Failed to import note:", error);
+                    const text = typeof note === "string" ? note : note.text;
+                    addNoteToUI(text);
+                  }
+                }
+
+                alert(`Successfully imported ${notes.length} notes`);
+              } catch (error) {
+                console.error("Import failed:", error);
+                alert("Failed to import notes. Invalid file format.");
+              }
+            };
+
+            if (file.name.endsWith(".docx")) {
+              // Read as array buffer for Word documents
+              reader.readAsArrayBuffer(file);
+            } else {
+              // Read as text for JSON files
+              reader.readAsText(file);
+            }
+          });
+
+          fileInput.click();
+        });
+
+        // Translation button event listener
+        translateBtn.addEventListener("click", async function () {
+          if (
+            !textDisplay.textContent.trim() ||
+            textDisplay.textContent.trim() ===
+              "Your transcribed text will appear here..."
+          ) {
+            alert("No text to translate");
+            return;
+          }
+
+          if (!navigator.onLine) {
+            alert("Translation requires internet connection");
+            return;
+          }
+
+          try {
+            translateBtn.disabled = true;
+            translateBtn.textContent = "Translating...";
+
+            const textToTranslate = textDisplay.textContent.trim();
+            const targetLang = targetLanguage.value;
+
+            // Use the translation function
+            const translation = await translateText(
+              textToTranslate,
+              targetLang
+            );
+
+            translationResult.textContent = translation;
+          } catch (error) {
+            console.error("Translation failed:", error);
+            alert("Translation failed. Please try again.");
+          } finally {
+            translateBtn.disabled = false;
+            translateBtn.textContent = "Translate Text";
+          }
+        });
+
+        languageSelect.addEventListener("change", function () {
+          if (recognition) {
+            recognition.lang = this.value;
+            if (isListening) {
+              recognition.stop();
+              setTimeout(() => recognition.start(), 100); // Faster restart
+            }
+          }
+        });
+
+        function addNoteToUI(text, id) {
+          const noteItem = document.createElement("li");
+          noteItem.className = "note-item";
+          noteItem.dataset.id = id || Date.now();
+
+          const noteText = document.createElement("span");
+          noteText.textContent = text;
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "delete-note";
+          deleteBtn.innerHTML = "×";
+          deleteBtn.addEventListener("click", async function () {
+            noteItem.remove();
+            if (id) {
+              try {
+                await deleteNoteFromDB(id);
+              } catch (error) {
+                console.error("Failed to delete note from DB:", error);
+              }
+            }
+          });
+
+          noteItem.appendChild(noteText);
+          noteItem.appendChild(deleteBtn);
+          notesList.appendChild(noteItem);
+
+          noteItem.scrollIntoView({ behavior: "smooth" });
+        }
+
+        textDisplay.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addNoteBtn.click();
+          }
+        });
+
+        // Page visibility handling
+        document.addEventListener("visibilitychange", function () {
+          if (document.visibilityState === "hidden" && isListening) {
+            recognition.stop();
+          } else if (
+            document.visibilityState === "visible" &&
+            isAutoListening
+          ) {
+            setTimeout(() => recognition.start(), 100); // Faster restart
+          }
+        });
+
+        // Beforeunload handling
+        window.addEventListener("beforeunload", function (e) {
+          if (isListening) {
+            recognition.stop();
+          }
+        });
+      });
+
+      // Service worker registration
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("sw.js")
+            .then((registration) => {
+              console.log("ServiceWorker registration successful");
+            })
+            .catch((err) => {
+              console.log("ServiceWorker registration failed: ", err);
+            });
+        });
+      }
+
+      // Install prompt handling
+      let deferredPrompt;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+
+        const installBtn = document.createElement("button");
+        installBtn.textContent = "Install App";
+        installBtn.style.position = "fixed";
+        installBtn.style.bottom = "20px";
+        installBtn.style.right = "20px";
+        installBtn.style.zIndex = "1000";
+        installBtn.style.padding = "10px 15px";
+        installBtn.style.backgroundColor = "#4CAF50";
+        installBtn.style.color = "white";
+        installBtn.style.border = "none";
+        installBtn.style.borderRadius = "5px";
+
+        installBtn.addEventListener("click", () => {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === "accepted") {
+              console.log("User accepted install");
+            }
+            deferredPrompt = null;
+          });
+        });
+
+        document.body.appendChild(installBtn);
+
+        setTimeout(() => {
+          installBtn.style.display = "none";
+        }, 10000);
+      });
+
+      // Add this at the end of DOMContentLoaded
+      setTimeout(() => {
+        if (!isListening && isAutoListening) {
+          recognition.start();
+        }
+      }, 50); // Very short initial delay
+
+      // Replace the current initialization code with:
+      function initializeRecognition() {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.log("Initial start failed, retrying immediately...", e);
+          setTimeout(() => {
+            try {
+              recognition.start();
+            } catch (e2) {
+              console.log("Second attempt failed:", e2);
+            }
+          }, 10); // Very short retry delay
+        }
+      }
+
+      // Call this instead of the current initialization
+      initializeRecognition();
+
+      // Add to your status updates
+      status.innerHTML =
+        '<span class="listening-indicator"></span>Initializing microphone...';
+    </script>
+  </body>
+</html>
